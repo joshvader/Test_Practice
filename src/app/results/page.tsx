@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { CheckCircle, XCircle, Clock, AlertTriangle, Terminal } from 'lucide-react';
-import { TEST_DATA } from '@/lib/questions';
+import { getTestData, resolveBankId } from '@/lib/questions';
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabaseAdminClient() {
@@ -58,17 +58,19 @@ export default async function ResultsPage({
   }
 
   const { practicantes: practicante, puntuacion_total, tiempo_minutos, respuestas_completas } = result;
+  const bankId = resolveBankId((respuestas_completas as any)?._meta?.bankId);
+  const testData = getTestData(bankId);
 
   // Calculate breakdown
   const sectionScores: Record<string, { score: number; max: number }> = {};
   
-  TEST_DATA.forEach((section) => {
+  testData.forEach((section) => {
     let score = 0;
     let max = 0;
     section.questions.forEach((q) => {
       if (q.type === 'multiple_choice' && q.correctOption !== undefined) {
         max += 10;
-        const answer = respuestas_completas[section.id]?.[q.id];
+        const answer = (respuestas_completas as any)[section.id]?.[q.id];
         if (answer !== undefined && parseInt(answer) === q.correctOption) {
           score += 10;
         }
@@ -140,7 +142,7 @@ export default async function ResultsPage({
               SYSTEM_DIAGNOSTIC // SECTOR_ANALYSIS
             </h2>
             <div className="space-y-6 mb-12">
-              {TEST_DATA.map((section) => {
+              {testData.map((section) => {
                 const { score, max } = sectionScores[section.id] || { score: 0, max: 0 };
                 const sectionPercentage = max > 0 ? (score / max) * 100 : 0;
                 

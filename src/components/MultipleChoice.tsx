@@ -15,7 +15,7 @@ interface MultipleChoiceProps {
 export default function MultipleChoice({ question, value, onChange }: MultipleChoiceProps) {
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-medium text-gray-900">{question.question}</h3>
+      <h3 className="text-lg font-black text-cyan-100 tracking-wide">{question.question}</h3>
       <div className="space-y-2">
         {question.options?.map((option, index) => (
           <label

@@ -188,3 +188,28 @@ export const TEST_DATA: Section[] = [
     ],
   },
 ];
+
+export type QuestionBankId = 'next' | 'html';
+
+export const DEFAULT_BANK_ID: QuestionBankId = 'next';
+
+const getSectionById = (id: string) => TEST_DATA.find((s) => s.id === id);
+
+export const QUESTION_BANKS: Record<QuestionBankId, Section[]> = {
+  next: [getSectionById('seccion_1'), getSectionById('seccion_3')].filter(Boolean) as Section[],
+  html: [getSectionById('seccion_2'), getSectionById('seccion_3')].filter(Boolean) as Section[],
+};
+
+export const QUESTION_BANK_LABELS: Record<QuestionBankId, string> = {
+  next: 'Next.js',
+  html: 'HTML/CSS/JS',
+};
+
+export function resolveBankId(value: unknown): QuestionBankId {
+  return value === 'html' ? 'html' : 'next';
+}
+
+export function getTestData(bankId?: unknown): Section[] {
+  const id = resolveBankId(bankId);
+  return QUESTION_BANKS[id] || QUESTION_BANKS[DEFAULT_BANK_ID];
+}

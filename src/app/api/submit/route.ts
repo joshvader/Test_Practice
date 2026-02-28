@@ -1,0 +1,204 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+const TEST_DATA = [
+  {
+    id: 'section1',
+    title: 'Section 1',
+    questions: [
+      {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'What is the capital of France?',
+        options: ['a) London', 'b) Paris', 'c) Berlin', 'd) Madrid'],
+        correctOption: 1
+      }
+    ]
+  },
+  {
+    id: 'section2',
+    title: 'Section 2',
+    questions: [
+      {
+        id: 'q2',
+        type: 'multiple_choice',
+        question: 'What is 2 + 2?',
+        options: ['a) 3', 'b) 4', 'c) 5', 'd) 6'],
+        correctOption: 1
+      }
+    ]
+  }
+];
+import { TestRespuesta } from '@/types/test';
+
+function getSupabaseAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url) return null;
+  const key = serviceRoleKey || anonKey;
+  if (!key) return null;
+
+  return createClient(url, key);
+}
+
+export async function POST(request: Request) {
+  try {
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Supabase no está configurado en el servidor.' },
+        { status: 500 }
+      );
+    }
+
+    const body = await request.json();
+    const { practicante_id, respuestas, tiempo_minutos, nombre, email } = body;
+
+    if (!respuestas) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    let practicanteId = practicante_id as string | undefined;
+
+    if (!practicanteId) {
+      const nombreStr = String(nombre || '').trim();
+      const emailStr = String(email || '').trim().toLowerCase();
+
+      if (!nombreStr || !emailStr) {
+        return NextResponse.json(
+          { error: 'Faltan nombre y/o correo para asociar el resultado.' },
+          { status: 400 }
+        );
+      }
+
+      const { data: existing, error: existingError } = await supabase
+        .from('practicantes')
+        .select('id')
+        .eq('email', emailStr)
+        .maybeSingle();
+
+      if (existingError) {
+        return NextResponse.json(
+          { error: 'Error consultando el correo.', details: existingError.message },
+          { status: 500 }
+        );
+      }
+
+      if (existing?.id) {
+        practicanteId = existing.id;
+      } else {
+        const { data: created, error: createError } = await supabase
+          .from('practicantes')
+          .insert([{ nombre: nombreStr, email: emailStr }])
+          .select()
+          .single();
+
+        if (createError) {
+          const message = String(createError.message || '');
+          if (createError.code === '42501' || message.toLowerCase().includes('row-level security')) {
+            return NextResponse.json(
+              {
+                error: 'Permisos insuficientes para registrar el usuario (RLS).',
+                details:
+                  'Configura SUPABASE_SERVICE_ROLE_KEY en el servidor o crea una policy de INSERT/SELECT para anon en la tabla practicantes.',
+              },
+              { status: 403 }
+            );
+          }
+          const status = createError.code === '23505' ? 409 : 500;
+          return NextResponse.json(
+            { error: 'No se pudo registrar el usuario.', details: createError.message },
+            { status }
+          );
+        }
+
+        practicanteId = created.id;
+      }
+    }
+
+    // Calculate score
+    let totalScore = 0;
+    let maxScore = 0;
+    const sectionScores: Record<string, number> = {};
+
+    TEST_DATA.forEach((section) => {
+      let sectionScore = 0;
+      let sectionMax = 0;
+
+      section.questions.forEach((q) => {
+        if (q.type === 'multiple_choice' && q.correctOption !== undefined) {
+          sectionMax += 10; // 10 points per MCQ
+          const userAnswer = respuestas[section.id]?.[q.id];
+          
+          // Check if answer matches (assuming answer is stored as the option text or index?)
+          // The frontend MultipleChoice component should probably save the index or the text.
+          // Let's assume it saves the index as string "0", "1", etc.
+          // Or the text.
+          // The options in TEST_DATA are "a) ...".
+          // If frontend saves "1" (index), we compare with correctOption.
+          
+          if (userAnswer !== undefined && parseInt(userAnswer) === q.correctOption) {
+            sectionScore += 10;
+          }
+        }
+        // For open questions, we don't grade automatically yet.
+        // Maybe assign 0 or mark as pending.
+      });
+
+      sectionScores[section.id] = sectionScore;
+      totalScore += sectionScore;
+      maxScore += sectionMax;
+    });
+
+    // Normalize to 100? 
+    // If we only grade MCQs, the max score is limited.
+    // Let's just save the raw score for now.
+    
+    // Save to DB
+    const { data, error } = await supabase
+      .from('test_results')
+      .insert([
+        {
+          practicante_id: practicanteId,
+          puntuacion_total: totalScore,
+          tiempo_minutos,
+          respuestas_completas: respuestas,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      const message = String(error.message || '');
+      if (error.code === '42501' || message.toLowerCase().includes('row-level security')) {
+        return NextResponse.json(
+          {
+            error: 'Permisos insuficientes para guardar el resultado (RLS).',
+            details:
+              'Configura SUPABASE_SERVICE_ROLE_KEY en el servidor o crea una policy de INSERT para anon en la tabla test_results.',
+          },
+          { status: 403 }
+        );
+      }
+      throw error;
+    }
+
+    return NextResponse.json({
+      success: true,
+      test_id: data.id,
+      score: totalScore,
+      sectionScores,
+    });
+
+  } catch (error: any) {
+    console.error('Error submitting test:', error);
+    return NextResponse.json(
+      { error: 'Error al enviar el test', details: error?.message || String(error) },
+      { status: 500 }
+    );
+  }
+}

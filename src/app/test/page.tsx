@@ -9,6 +9,7 @@ import MultipleChoice from '../../components/MultipleChoice';
 import TextQuestion from '../../components/TextQuestion';
 import CodeEditor from '../../components/CodeEditor';
 import { Loader2, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function TestPage() {
   const router = useRouter();
@@ -61,8 +62,20 @@ export default function TestPage() {
   const handleSubmit = async () => {
     if (submitting) return;
     
-    // Custom cyberpunk confirm
-    if (!window.confirm('¿CONFIRMAR ENVÍO FINAL? Una vez enviado, la secuencia de datos se bloqueará.')) {
+    const confirmResult = await Swal.fire({
+      title: '¿CONFIRMAR ENVÍO FINAL?',
+      text: 'Una vez enviado, la secuencia de datos se bloqueará.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'ENVIAR',
+      cancelButtonText: 'CANCELAR',
+      background: '#0a0a0a',
+      color: '#a5f3fc',
+      confirmButtonColor: '#06b6d4',
+      cancelButtonColor: '#334155',
+    });
+
+    if (!confirmResult.isConfirmed) {
       return;
     }
 
@@ -75,7 +88,15 @@ export default function TestPage() {
   };
 
   const handleTimeUp = async () => {
-    alert('TIEMPO AGOTADO. Enviando datos automáticamente...');
+    await Swal.fire({
+      title: 'TIEMPO AGOTADO',
+      text: 'Enviando datos automáticamente...',
+      icon: 'info',
+      background: '#0a0a0a',
+      color: '#a5f3fc',
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#06b6d4',
+    });
     if (!practicante) {
       setShowIdentity(true);
       return;
@@ -115,7 +136,15 @@ export default function TestPage() {
       resetTest();
     } catch (error: any) {
       console.error('Error submitting:', error);
-      alert(error.message || 'Error en el enlace de datos. Reintente o contacte soporte.');
+      await Swal.fire({
+        title: 'ERROR',
+        text: error.message || 'Error en el enlace de datos. Reintente o contacte soporte.',
+        icon: 'error',
+        background: '#0a0a0a',
+        color: '#a5f3fc',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#d946ef',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -135,8 +164,8 @@ export default function TestPage() {
             <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-400"></div>
 
             <div className="p-6 border-b border-cyan-500/20">
-              <h2 className="text-sm font-black uppercase tracking-widest text-cyan-100">IDENTIFICACIÓN FINAL</h2>
-              <p className="text-[10px] text-cyan-100 font-bold uppercase tracking-wider mt-2">
+              <h2 className="text-sm font-black uppercase tracking-widest text-cyan-600">IDENTIFICACIÓN FINAL</h2>
+              <p className="text-[10px] text-cyan-6100 font-bold uppercase tracking-wider mt-2">
                 Ingresa tus datos para asociar el resultado.
               </p>
             </div>
@@ -157,20 +186,20 @@ export default function TestPage() {
               }}
             >
               <div>
-                <label className="block text-[10px] uppercase tracking-wider text-cyan-100 mb-2 font-bold">
+                <label className="block text-[10px] uppercase tracking-wider text-cyan-600 mb-2 font-bold">
                   Nombre Completo
                 </label>
                 <input
                   value={identity.nombre}
                   onChange={(e) => setIdentity((prev) => ({ ...prev, nombre: e.target.value }))}
                   required
-                  className="w-full bg-white text-slate-100 px-4 py-3 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all rounded-sm placeholder:text-slate-400"
+                  className="w-full bg-white text-slate-600 px-4 py-3 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all rounded-sm placeholder:text-slate-400"
                   placeholder="Ej. Juan Pérez"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-wider text-cyan-100 mb-2 font-bold">
+                <label className="block text-[10px] uppercase tracking-wider text-cyan-600 mb-2 font-bold">
                   Correo Electrónico
                 </label>
                 <input
@@ -178,7 +207,7 @@ export default function TestPage() {
                   value={identity.email}
                   onChange={(e) => setIdentity((prev) => ({ ...prev, email: e.target.value }))}
                   required
-                  className="w-full bg-white text-slate-100 px-4 py-3 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all rounded-sm placeholder:text-slate-400"
+                  className="w-full bg-white text-slate-600 px-4 py-3 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all rounded-sm placeholder:text-slate-400"
                   placeholder="Ej. juan@ejemplo.com"
                 />
               </div>
@@ -203,7 +232,7 @@ export default function TestPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-black py-3 px-4 uppercase tracking-[0.2em] transition-all text-[10px] disabled:opacity-50"
+                  className="flex-1 bg-fuchsia-600 hover:bg-fuchsia-500 text-cyan-400 font-black py-3 px-4 uppercase tracking-[0.2em] transition-all text-[10px] disabled:opacity-50"
                 >
                   {submitting ? 'ENVIANDO...' : 'ENVIAR'}
                 </button>
@@ -234,7 +263,7 @@ export default function TestPage() {
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-6 py-2 text-xs font-black uppercase tracking-widest transition-all hover:shadow-[0_0_15px_rgba(217,70,239,0.5)] disabled:opacity-50"
+              className="bg-fuchsia-600 hover:bg-fuchsia-500 text-cyan-400 px-6 py-2 text-xs font-black uppercase tracking-widest transition-all hover:shadow-[0_0_15px_rgba(217,70,239,0.5)] disabled:opacity-50"
               style={{ clipPath: 'polygon(0 0, 100% 0, 100% 70%, 85% 100%, 0 100%)' }}
             >
               {submitting ? (

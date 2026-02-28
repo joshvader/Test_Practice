@@ -17,12 +17,12 @@ interface TextQuestionProps {
 export default function TextQuestion({ question, value, onChange }: TextQuestionProps) {
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-medium text-gray-900">{question.question}</h3>
+      <h3 className="text-lg font-black text-cyan-100 tracking-wide">{question.question}</h3>
       <textarea
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={question.placeholder}
-        className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors resize-y text-black"
+        className="w-full h-32 p-3 border border-cyan-500/30 rounded-sm bg-black/40 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 outline-none transition-all resize-y text-cyan-100 placeholder:text-cyan-800"
       />
     </div>
   );

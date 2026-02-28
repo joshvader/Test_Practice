@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTest } from '../../context/TestContext';
-import { TEST_DATA } from '../../lib/questions';
+import { getTestData, resolveBankId } from '../../lib/questions';
 import Timer from '../../components/Timer';
 import MultipleChoice from '../../components/MultipleChoice';
 import TextQuestion from '../../components/TextQuestion';
@@ -12,12 +12,21 @@ import { Loader2, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function TestPage() {
   const router = useRouter();
-  const { practicante, respuestas, setRespuesta, startTime, startTest, resetTest } = useTest();
+  const { practicante, bankId, setBankId, respuestas, setRespuesta, startTime, startTest, resetTest } = useTest();
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [showIdentity, setShowIdentity] = useState(false);
   const [identityError, setIdentityError] = useState<string | null>(null);
   const [identity, setIdentity] = useState({ nombre: '', email: '' });
+
+  useEffect(() => {
+    const urlBank = resolveBankId(new URLSearchParams(window.location.search).get('bank'));
+    if (urlBank !== bankId) setBankId(urlBank);
+  }, [bankId, setBankId]);
+
+  useEffect(() => {
+    setCurrentSectionIndex(0);
+  }, [bankId]);
 
   useEffect(() => {
     if (!startTime) {
@@ -29,8 +38,9 @@ export default function TestPage() {
     return null; // Or loading spinner
   }
 
-  const currentSection = TEST_DATA[currentSectionIndex];
-  const isLastSection = currentSectionIndex === TEST_DATA.length - 1;
+  const testData = getTestData(bankId);
+  const currentSection = testData[currentSectionIndex];
+  const isLastSection = currentSectionIndex === testData.length - 1;
 
   const handleNext = () => {
     if (isLastSection) {
@@ -85,6 +95,7 @@ export default function TestPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          bankId,
           practicante_id: practicante?.id,
           nombre: overrideIdentity?.nombre,
           email: overrideIdentity?.email,
@@ -111,7 +122,7 @@ export default function TestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] font-mono text-cyan-500 pb-20 relative overflow-hidden">
+    <div className="min-h-screen bg-[#020617] font-mono text-white pb-20 relative overflow-hidden">
       {/* Decorative background grid/elements */}
       <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#22d3ee 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }}></div>
 
@@ -124,8 +135,8 @@ export default function TestPage() {
             <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-400"></div>
 
             <div className="p-6 border-b border-cyan-500/20">
-              <h2 className="text-sm font-black uppercase tracking-widest text-cyan-300">IDENTIFICACIÓN FINAL</h2>
-              <p className="text-[10px] text-cyan-700 font-bold uppercase tracking-wider mt-2">
+              <h2 className="text-sm font-black uppercase tracking-widest text-cyan-100">IDENTIFICACIÓN FINAL</h2>
+              <p className="text-[10px] text-cyan-100 font-bold uppercase tracking-wider mt-2">
                 Ingresa tus datos para asociar el resultado.
               </p>
             </div>
@@ -146,20 +157,20 @@ export default function TestPage() {
               }}
             >
               <div>
-                <label className="block text-[10px] uppercase tracking-wider text-cyan-600 mb-2 font-bold">
+                <label className="block text-[10px] uppercase tracking-wider text-cyan-100 mb-2 font-bold">
                   Nombre Completo
                 </label>
                 <input
                   value={identity.nombre}
                   onChange={(e) => setIdentity((prev) => ({ ...prev, nombre: e.target.value }))}
                   required
-                  className="w-full bg-white text-slate-900 px-4 py-3 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all rounded-sm placeholder:text-slate-400"
+                  className="w-full bg-white text-slate-100 px-4 py-3 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all rounded-sm placeholder:text-slate-400"
                   placeholder="Ej. Juan Pérez"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-wider text-cyan-600 mb-2 font-bold">
+                <label className="block text-[10px] uppercase tracking-wider text-cyan-100 mb-2 font-bold">
                   Correo Electrónico
                 </label>
                 <input
@@ -167,7 +178,7 @@ export default function TestPage() {
                   value={identity.email}
                   onChange={(e) => setIdentity((prev) => ({ ...prev, email: e.target.value }))}
                   required
-                  className="w-full bg-white text-slate-900 px-4 py-3 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all rounded-sm placeholder:text-slate-400"
+                  className="w-full bg-white text-slate-100 px-4 py-3 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all rounded-sm placeholder:text-slate-400"
                   placeholder="Ej. juan@ejemplo.com"
                 />
               </div>
@@ -242,13 +253,13 @@ export default function TestPage() {
         <div className="h-0.5 bg-cyan-900/30 w-full relative overflow-hidden">
           <div 
             className="h-full bg-linear-to-r from-cyan-600 to-cyan-400 transition-all duration-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]"
-            style={{ width: `${((currentSectionIndex + 1) / TEST_DATA.length) * 100}%` }}
+            style={{ width: `${((currentSectionIndex + 1) / testData.length) * 100}%` }}
           />
         </div>
 
         {/* Tabs */}
         <div className="max-w-5xl mx-auto px-4 flex overflow-x-auto bg-[#0a0a0a]/50">
-          {TEST_DATA.map((section, index) => (
+          {testData.map((section, index) => (
             <button
               key={section.id}
               onClick={() => setCurrentSectionIndex(index)}
@@ -280,7 +291,7 @@ export default function TestPage() {
           
           <div className="p-8 space-y-12">
             {currentSection.questions.map((question) => {
-              const currentValue = respuestas[currentSection.id as keyof typeof respuestas]?.[question.id];
+              const currentValue = respuestas[currentSection.id]?.[question.id];
               
               return (
                 <div key={question.id} className="pb-10 border-b border-cyan-900/30 last:border-0">

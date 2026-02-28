@@ -1,34 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-const TEST_DATA = [
-  {
-    id: 'section1',
-    title: 'Section 1',
-    questions: [
-      {
-        id: 'q1',
-        type: 'multiple_choice',
-        question: 'What is the capital of France?',
-        options: ['a) London', 'b) Paris', 'c) Berlin', 'd) Madrid'],
-        correctOption: 1
-      }
-    ]
-  },
-  {
-    id: 'section2',
-    title: 'Section 2',
-    questions: [
-      {
-        id: 'q2',
-        type: 'multiple_choice',
-        question: 'What is 2 + 2?',
-        options: ['a) 3', 'b) 4', 'c) 5', 'd) 6'],
-        correctOption: 1
-      }
-    ]
-  }
-];
-import { TestRespuesta } from '@/types/test';
+import { getTestData, resolveBankId } from '@/lib/questions';
 
 function getSupabaseAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -53,7 +25,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { practicante_id, respuestas, tiempo_minutos, nombre, email } = body;
+    const { bankId, practicante_id, respuestas, tiempo_minutos, nombre, email } = body;
+    const resolvedBankId = resolveBankId(bankId);
+    const testData = getTestData(resolvedBankId);
 
     if (!respuestas) {
       return NextResponse.json(
@@ -125,7 +99,7 @@ export async function POST(request: Request) {
     let maxScore = 0;
     const sectionScores: Record<string, number> = {};
 
-    TEST_DATA.forEach((section) => {
+    testData.forEach((section) => {
       let sectionScore = 0;
       let sectionMax = 0;
 
@@ -166,7 +140,10 @@ export async function POST(request: Request) {
           practicante_id: practicanteId,
           puntuacion_total: totalScore,
           tiempo_minutos,
-          respuestas_completas: respuestas,
+          respuestas_completas: {
+            ...(respuestas || {}),
+            _meta: { bankId: resolvedBankId },
+          },
         },
       ])
       .select()

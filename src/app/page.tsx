@@ -4,22 +4,24 @@ import { type SyntheticEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTest } from '../context/TestContext';
 import { Loader2 } from 'lucide-react';
+import { QUESTION_BANK_LABELS, type QuestionBankId } from '@/lib/questions';
 
 export default function Home() {
   const router = useRouter();
-  const { startTest, resetTest } = useTest();
+  const { startTest, resetTest, setBankId } = useTest();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleStart = async (e: SyntheticEvent) => {
+  const handleStart = (bankId: QuestionBankId) => async (e: SyntheticEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
       resetTest();
+      setBankId(bankId);
       startTest();
-      router.push('/test');
+      router.push(`/test?bank=${bankId}`);
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error al registrar. Inténtalo de nuevo.');
     } finally {
@@ -89,7 +91,7 @@ export default function Home() {
             {/* Form Section */}
             <div className="space-y-6 pt-4">
               <div className="text-xs text-cyan-300/80 border border-cyan-900/40 bg-black/30 p-4">
-                El test comienza de inmediato. Al finalizar, el sistema te pedirá tu nombre y correo para asociar el resultado.
+                Selecciona el tipo de preguntas. El test comienza de inmediato. Al finalizar, el sistema te pedirá tu nombre y correo para asociar el resultado.
               </div>
 
               {error && (
@@ -99,10 +101,10 @@ export default function Home() {
               )}
 
               <a
-                href="/test"
-                onClick={handleStart}
+                href="/test?bank=next"
+                onClick={handleStart('next')}
                 aria-disabled={loading}
-                className="w-full inline-flex items-center justify-center bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black py-4 px-6 uppercase tracking-[0.2em] transition-all mt-8 relative group overflow-hidden disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black py-4 px-6 uppercase tracking-[0.2em] transition-all mt-6 relative group overflow-hidden disabled:opacity-50"
                 style={loading ? { pointerEvents: 'none', opacity: 0.7 } : undefined}
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
@@ -112,7 +114,26 @@ export default function Home() {
                       INITIALIZING...
                     </>
                   ) : (
-                    'COMENZAR EVALUACIÓN'
+                    `PREGUNTAS ${QUESTION_BANK_LABELS.next}`
+                  )}
+                </span>
+              </a>
+
+              <a
+                href="/test?bank=html"
+                onClick={handleStart('html')}
+                aria-disabled={loading}
+                className="w-full inline-flex items-center justify-center bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-black py-4 px-6 uppercase tracking-[0.2em] transition-all relative group overflow-hidden disabled:opacity-50"
+                style={loading ? { pointerEvents: 'none', opacity: 0.7 } : undefined}
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      INITIALIZING...
+                    </>
+                  ) : (
+                    `PREGUNTAS ${QUESTION_BANK_LABELS.html}`
                   )}
                 </span>
               </a>

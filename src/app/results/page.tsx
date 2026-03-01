@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { CheckCircle, XCircle, Clock, AlertTriangle, Terminal } from 'lucide-react';
 import { getTestData, resolveBankId } from '@/lib/questions';
 import { createClient } from '@supabase/supabase-js';
+import { maxPointsForQuestion, pointsForQuestionAnswer } from '@/lib/scoring';
 
 function getSupabaseAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,12 +19,9 @@ function getSupabaseAdminClient() {
 export default async function ResultsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }> | { id?: string };
+  searchParams: Promise<{ id?: string }>;
 }) {
-  const resolvedSearchParams =
-    searchParams && typeof (searchParams as any).then === 'function'
-      ? await (searchParams as Promise<{ id?: string }>)
-      : (searchParams as { id?: string });
+  const resolvedSearchParams = await searchParams;
   const id = resolvedSearchParams?.id;
 
   if (!id) {
@@ -57,7 +55,7 @@ export default async function ResultsPage({
     );
   }
 
-  const { practicantes: practicante, puntuacion_total, tiempo_minutos, respuestas_completas } = result;
+  const { practicantes: practicante, tiempo_minutos, respuestas_completas } = result;
   const bankId = resolveBankId((respuestas_completas as any)?._meta?.bankId);
   const testData = getTestData(bankId);
 
@@ -68,19 +66,16 @@ export default async function ResultsPage({
     let score = 0;
     let max = 0;
     section.questions.forEach((q) => {
-      if (q.type === 'multiple_choice' && q.correctOption !== undefined) {
-        max += 10;
-        const answer = (respuestas_completas as any)[section.id]?.[q.id];
-        if (answer !== undefined && parseInt(answer) === q.correctOption) {
-          score += 10;
-        }
-      }
+      max += maxPointsForQuestion(q);
+      const answer = (respuestas_completas as any)[section.id]?.[q.id];
+      score += pointsForQuestionAnswer(q, answer);
     });
     sectionScores[section.id] = { score, max };
   });
 
   const totalMaxScore = Object.values(sectionScores).reduce((acc, curr) => acc + curr.max, 0);
-  const percentage = totalMaxScore > 0 ? Math.round((puntuacion_total / totalMaxScore) * 100) : 0;
+  const computedTotalScore = Object.values(sectionScores).reduce((acc, curr) => acc + curr.score, 0);
+  const percentage = totalMaxScore > 0 ? Math.round((computedTotalScore / totalMaxScore) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-[#020617] font-mono text-cyan-500 py-12 px-4 relative overflow-hidden">
@@ -112,7 +107,7 @@ export default async function ResultsPage({
                 <div className="absolute bottom-0 right-0 w-2 h-2 bg-cyan-500"></div>
                 <p className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest mb-2">SCORE_TOTAL</p>
                 <p className="text-4xl font-black text-white group-hover:text-cyan-300 transition-colors" style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
-                  {puntuacion_total} <span className="text-lg text-cyan-600 font-normal">/ {totalMaxScore}</span>
+                  {computedTotalScore} <span className="text-lg text-cyan-600 font-normal">/ {totalMaxScore}</span>
                 </p>
               </div>
               
@@ -179,6 +174,55 @@ export default async function ResultsPage({
                         PENDING_MANUAL_REVIEW // DATA_WAITING
                       </p>
                     )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <h2 className="text-sm font-bold text-cyan-300 mb-6 uppercase tracking-widest flex items-center">
+              <Terminal className="w-4 h-4 mr-2" />
+              RESPUESTAS // DATA_DUMP
+            </h2>
+            <div className="space-y-6 mb-12">
+              {testData.map((section) => {
+                const sectionResponses = ((respuestas_completas as any) || {})[section.id] || {};
+                return (
+                  <div key={`answers_${section.id}`} className="border border-cyan-500/20 bg-black/30 p-6">
+                    <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-cyan-200 mb-5">
+                      {section.title}
+                    </h3>
+                    <div className="space-y-5">
+                      {section.questions.map((q) => {
+                        const raw = sectionResponses?.[q.id];
+                        const hasAnswer = raw !== undefined && raw !== null && String(raw).trim() !== '';
+                        const normalized =
+                          q.type === 'multiple_choice'
+                            ? (() => {
+                                const idx = parseInt(String(raw), 10);
+                                if (Number.isFinite(idx) && q.options?.[idx]) return q.options[idx];
+                                return raw;
+                              })()
+                            : raw;
+
+                        return (
+                          <div key={`${section.id}_${q.id}`} className="border border-cyan-500/10 bg-[#0a0a0a]/60 p-4">
+                            <p className="text-[11px] font-bold text-cyan-300 uppercase tracking-wide mb-2">
+                              Q{q.id}
+                            </p>
+                            <p className="text-sm text-gray-200 mb-3">{q.question}</p>
+                            {q.type === 'code' ? (
+                              <pre className="text-[12px] text-cyan-100 bg-black/50 border border-cyan-500/20 p-4 overflow-auto whitespace-pre-wrap">
+                                {hasAnswer ? String(normalized) : 'SIN RESPUESTA'}
+                              </pre>
+                            ) : (
+                              <p className="text-sm text-cyan-100 whitespace-pre-wrap">
+                                {hasAnswer ? String(normalized) : 'SIN RESPUESTA'}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}

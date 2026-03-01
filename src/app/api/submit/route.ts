@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getTestData, resolveBankId } from '@/lib/questions';
+import { maxPointsForQuestion, pointsForQuestionAnswer } from '@/lib/scoring';
 
 function getSupabaseAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -104,23 +105,10 @@ export async function POST(request: Request) {
       let sectionMax = 0;
 
       section.questions.forEach((q) => {
-        if (q.type === 'multiple_choice' && q.correctOption !== undefined) {
-          sectionMax += 10; // 10 points per MCQ
-          const userAnswer = respuestas[section.id]?.[q.id];
-          
-          // Check if answer matches (assuming answer is stored as the option text or index?)
-          // The frontend MultipleChoice component should probably save the index or the text.
-          // Let's assume it saves the index as string "0", "1", etc.
-          // Or the text.
-          // The options in TEST_DATA are "a) ...".
-          // If frontend saves "1" (index), we compare with correctOption.
-          
-          if (userAnswer !== undefined && parseInt(userAnswer) === q.correctOption) {
-            sectionScore += 10;
-          }
-        }
-        // For open questions, we don't grade automatically yet.
-        // Maybe assign 0 or mark as pending.
+        const questionMax = maxPointsForQuestion(q);
+        sectionMax += questionMax;
+        const userAnswer = respuestas?.[section.id]?.[q.id];
+        sectionScore += pointsForQuestionAnswer(q, userAnswer);
       });
 
       sectionScores[section.id] = sectionScore;

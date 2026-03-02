@@ -137,6 +137,25 @@ export default function Home() {
                   )}
                 </span>
               </a>
+
+              <a
+                href="/test?bank=db"
+                onClick={handleStart('db')}
+                aria-disabled={loading}
+                className="w-full inline-flex items-center justify-center bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-4 px-6 uppercase tracking-[0.2em] transition-all relative group overflow-hidden disabled:opacity-50"
+                style={loading ? { pointerEvents: 'none', opacity: 0.7 } : undefined}
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      INITIALIZING...
+                    </>
+                  ) : (
+                    `PREGUNTAS ${QUESTION_BANK_LABELS.db}`
+                  )}
+                </span>
+              </a>
             </div>
 
             {/* Footer Data */}

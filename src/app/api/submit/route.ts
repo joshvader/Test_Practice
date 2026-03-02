@@ -116,9 +116,7 @@ export async function POST(request: Request) {
       maxScore += sectionMax;
     });
 
-    // Normalize to 100? 
-    // If we only grade MCQs, the max score is limited.
-    // Let's just save the raw score for now.
+    const scorePercent = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
     
     // Save to DB
     const { data, error } = await supabase
@@ -126,11 +124,14 @@ export async function POST(request: Request) {
       .insert([
         {
           practicante_id: practicanteId,
-          puntuacion_total: totalScore,
+          puntuacion_total: scorePercent,
           tiempo_minutos,
           respuestas_completas: {
             ...(respuestas || {}),
-            _meta: { bankId: resolvedBankId },
+            _meta: {
+              bankId: resolvedBankId,
+              score: { raw: totalScore, max: maxScore, percent: scorePercent },
+            },
           },
         },
       ])
@@ -155,7 +156,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       test_id: data.id,
-      score: totalScore,
+      score_percent: scorePercent,
+      score_raw: totalScore,
+      score_max: maxScore,
       sectionScores,
     });
 
